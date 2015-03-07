@@ -68,10 +68,16 @@ class Node(object):
             if self.can_send_to(neigh):
                 self.pending.add(neigh)
    
-    def send_sp_pending(self):
+    def send_pending(self,algo='sp'):
         for node in list(self.pending):
             print "in",self,"link to",node,"is pending. sending message..."
-            self.send_sp_msg(node)
+            if algo == 'sp':
+                self.send_sp_msg(node)
+            elif algo == 'ms':
+                self.send_ms_msg(node)
+            else:
+                raise Exception("algorithm "+algo+" unknown")
+                
 
     def receive_msg(self, other, msg):  
         print self.name,"received message",msg,"from",str(other)
@@ -94,7 +100,7 @@ class Node(object):
         ]
         return msg_vectors
 
-    def _in_msgs_product(self,exclude=None):
+    def _in_msgs_reduce(self,func, exclude=None):
         msg_vectors = self._in_msgs_except(exclude)
 
         if len(msg_vectors) == 0:
@@ -102,10 +108,10 @@ class Node(object):
             return np.array(1)
 
         ixstuff = np.ix_(*msg_vectors)
-        ret = reduce(np.multiply, ixstuff)
+        ret = reduce(func, ixstuff)
         return ret
 
-    def _sum_collapse(self, summand, exclude=None):
+    def _collapse(self, func, summand, exclude=None):
         if exclude is None:
             exclude = []
         if type(exclude) is not list:
@@ -120,7 +126,7 @@ class Node(object):
             return summand
         ret = summand
         for i in sum_axes[::-1]:
-            ret = np.sum(ret,axis=i)
+            ret = func(ret,axis=i)
         return ret
 
 class Variable(Node):
@@ -176,6 +182,12 @@ class Variable(Node):
         return None, Z
     
     def send_sp_msg(self, other):
+        return self.send_generic_msg(np.multiply, other)
+
+    def send_ms_msg(self, other):
+        return self.send_generic_msg(np.add, other)
+
+    def send_generic_msg(self, reduce_func, other):
         print bcolors.OKBLUE+"msg ",str(self),"-->",str(other)+bcolors.ENDC
         assert len(self.in_msgs) >= len(self.neighbours) - 1
         assert other in self.neighbours
@@ -188,7 +200,7 @@ class Variable(Node):
         if len(msgs) == 0:
             msg = np.array([1] * self.num_states)
         else:
-            msg = reduce(np.multiply,msgs)
+            msg = reduce(reduce_func,msgs)
         
         # normalize message to sum=1
         msg_normalized = normalize(msg)
@@ -198,10 +210,6 @@ class Variable(Node):
         
         if other in self.pending:
             self.pending.remove(other)
-
-    def send_ms_msg(self, other):
-        # TODO: implement Variable -> Factor message for max-sum
-        pass
     
     def marginal(self):
         return reduce(np.multiply,self._in_msgs_except())
@@ -282,28 +290,34 @@ class Factor(Node):
         return new_f
 
     def send_sp_msg(self, other):
+        return self.send_generic_msg(np.sum, np.multiply, lambda f:f, other)
+
+    def send_ms_msg(self, other):
+        return self.send_generic_msg(np.max, np.add, np.log, other)
+        
+    def send_generic_msg(self, collapse_func, reduce_func, factor_func, other):
         print bcolors.OKBLUE+"msg ",str(self),"-->",str(other)+bcolors.ENDC
         assert len(self.in_msgs) >= len(self.neighbours) - 1
         assert other in self.neighbours
         assert self.can_send_to(other)
 
-        # outer product of all the messages
-        pr = self._in_msgs_product(other)
+        # outer product/sum of all the messages
+        pr = self._in_msgs_reduce(reduce_func, other)
 
-        # tiling the product on the axis of the destination message
+        # tiling the product/sum on the axis of the destination message
         other_index = self.neighbours.index(other)
         tile_reps = [1] * len(self.neighbours)
         tile_reps[other_index] = other.num_states
         pr_expanded = np.expand_dims(pr,other_index)
         pr_rep = np.tile(pr_expanded,tuple(tile_reps))
         
-        # element-wise product of product of message array/function
+        # element-wise product/sum of product of message array/function
         # and factor array/function
-        f_o = self.f_with_observations()
-        summand = np.multiply(pr_rep,f_o)
+        f_o = factor_func(self.f_with_observations())
+        summand = reduce_func(pr_rep,f_o)
 
-        # summation over all the axes except the destination's one
-        msg = self._sum_collapse(summand, other_index)
+        # summation/max over all the axes except the destination's one
+        msg = self._collapse(collapse_func, summand, other_index)
 
         # normalize message to sum=1
         msg_normalized = normalize(msg)
@@ -313,10 +327,6 @@ class Factor(Node):
         
         if other in self.pending:
             self.pending.remove(other)
-   
-    def send_ms_msg(self, other):
-        # TODO: implement Factor -> Variable message for max-sum
-        pass
 
     def __str__(self):
         # This is printed when using 'print node_instance'

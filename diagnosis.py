@@ -104,12 +104,18 @@ def main():
     observe_some_variables()
     sum_product(node_list)
 
-def sum_product(node_list):
+def run_on_list(node_list,algo='sp'):
     node_list_reverse = node_list[:]
     node_list_reverse.reverse()
     for node in node_list + node_list_reverse:
         print bcolors.OKGREEN + str(node) + bcolors.ENDC
-        node.send_sp_pending()
+        node.send_pending(algo)
+
+def sum_product(node_list):
+    run_on_list(node_list,algo='sp')
+
+def max_sum(node_list):
+    run_on_list(node_list,algo='ms')
 
 if __name__ == "__main__":
     main()
