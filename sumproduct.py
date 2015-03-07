@@ -221,7 +221,54 @@ class Factor(Node):
             nb.add_neighbour(self)
 
         self.f = f
+    
+    def f_with_observations(self):
+        """
+        creating an array of coefficients that has the same shape of self.f
+        This should be ultimately multiplied by self.f.
+        Each observed_state from the neighbours is considered,
+        and it's dimensions augmented to its position in the factor space.
+        Then, it's tiled in all other dimensions to get a shape as self.f.
+        Each of these temporary multi-dimensional arrays are then multiplied 
+        element-wise with each other in order to create the final 
+        coefficients for self.f.
+        For example, if all variables are unobserved the coefficients should result
+        in a multi-dimensional array with just ones.
+        The more the observed variables, the more the ~0 elements are present
+        in the coefficient array.
+        """
+
+        # gather all observed_status vectors from the neighbours
+        obs_list = [ neigh.observed_status.copy() for neigh in self.neighbours ]
         
+        # expand dimension of every vector
+        for d in range(len(self.neighbours)):
+            for i, obs in enumerate(obs_list):
+                if d == i:
+                    # expand dimensions only in dimensions that are not the
+                    # current variable's one
+                    continue
+                
+                obs = np.expand_dims(obs,d)
+                obs_list[i] = obs
+        
+        # tile the observation vectors to get coefficient matrices
+        tile_config_template = [neigh.num_states for neigh in self.neigbours]
+        tile_configs = []
+        obs_ms = [] # coefficient matrices, one for each neighbour
+        for i, obs in enumerate(obs_list):
+            tile_config = tile_config_template[:] # copy
+            tile_config[i] = 1 # don't tile in own dimension
+            obs_m = np.tile(obs,tile_config)
+            obs_ms.append(obs_m)
+        
+        # multiply all temporary coefficient arrays
+        final_coefficients = reduce(np.multiply, obs_ms)
+        
+        # create the self.f substitute that takes into account observations
+        new_f = np.multiply(self.f, final_coefficients)
+        return new_f
+
     def send_sp_msg(self, other):
         print bcolors.OKBLUE+"msg ",str(self),"-->",str(other)+bcolors.ENDC
         assert len(self.in_msgs) >= len(self.neighbours) - 1
@@ -240,7 +287,8 @@ class Factor(Node):
         
         # element-wise product of product of message array/function
         # and factor array/function
-        summand = np.multiply(pr_rep,self.f)
+        f_o = self.f_with_observations()
+        summand = np.multiply(pr_rep,f_o)
 
         # summation over all the axes except the destination's one
         msg = self._sum_collapse(summand, other_index)
