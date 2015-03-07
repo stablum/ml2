@@ -238,8 +238,8 @@ class Factor(Node):
         in the coefficient array.
         """
 
-        # gather all observed_status vectors from the neighbours
-        obs_list = [ neigh.observed_status.copy() for neigh in self.neighbours ]
+        # gather all observed_state vectors from the neighbours
+        obs_list = [ neigh.observed_state.copy() for neigh in self.neighbours ]
         
         # expand dimension of every vector
         for d in range(len(self.neighbours)):
@@ -253,7 +253,7 @@ class Factor(Node):
                 obs_list[i] = obs
         
         # tile the observation vectors to get coefficient matrices
-        tile_config_template = [neigh.num_states for neigh in self.neigbours]
+        tile_config_template = [neigh.num_states for neigh in self.neighbours]
         tile_configs = []
         obs_ms = [] # coefficient matrices, one for each neighbour
         for i, obs in enumerate(obs_list):
