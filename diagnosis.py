@@ -103,6 +103,7 @@ def main():
     node_list = create_node_list()
     observe_some_variables()
     sum_product(node_list)
+    #max_sum(node_list)
 
 def run_on_list(node_list,algo='sp'):
     node_list_reverse = node_list[:]

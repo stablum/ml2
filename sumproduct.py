@@ -15,7 +15,6 @@ def normalize(vector):
     s = sum(vector)
     if s==0:
         # prevent division by 0
-        print "ERROR: why sum(vector)==0???",vector
         return vector
 
     return vector/s
@@ -100,15 +99,15 @@ class Node(object):
         ]
         return msg_vectors
 
-    def _in_msgs_reduce(self,func, exclude=None):
+    def _in_msgs_reduce(self,reduce_func, factor_func, exclude=None):
         msg_vectors = self._in_msgs_except(exclude)
 
         if len(msg_vectors) == 0:
-            # leaf factor?
-            return np.array(1)
+            # leaf node?
+            return factor_func(np.array(1))
 
         ixstuff = np.ix_(*msg_vectors)
-        ret = reduce(func, ixstuff)
+        ret = reduce(reduce_func, ixstuff)
         return ret
 
     def _collapse(self, func, summand, exclude=None):
@@ -182,12 +181,12 @@ class Variable(Node):
         return None, Z
     
     def send_sp_msg(self, other):
-        return self.send_generic_msg(np.multiply, other)
+        return self.send_generic_msg(np.multiply, lambda x:x, other)
 
     def send_ms_msg(self, other):
-        return self.send_generic_msg(np.add, other)
+        return self.send_generic_msg(np.add, np.log, other)
 
-    def send_generic_msg(self, reduce_func, other):
+    def send_generic_msg(self, reduce_func, factor_func, other):
         print bcolors.OKBLUE+"msg ",str(self),"-->",str(other)+bcolors.ENDC
         assert len(self.in_msgs) >= len(self.neighbours) - 1
         assert other in self.neighbours
@@ -198,7 +197,7 @@ class Variable(Node):
         # element-wise multiplication of all incoming messages
         # (which have the same size, since they operate on the same variable)
         if len(msgs) == 0:
-            msg = np.array([1] * self.num_states)
+            msg = factor_func(np.array([1] * self.num_states))
         else:
             msg = reduce(reduce_func,msgs)
         
@@ -302,7 +301,7 @@ class Factor(Node):
         assert self.can_send_to(other)
 
         # outer product/sum of all the messages
-        pr = self._in_msgs_reduce(reduce_func, other)
+        pr = self._in_msgs_reduce(reduce_func, factor_func, other)
 
         # tiling the product/sum on the axis of the destination message
         other_index = self.neighbours.index(other)
