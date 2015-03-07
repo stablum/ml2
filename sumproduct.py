@@ -11,6 +11,15 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+def normalize(vector):
+    s = sum(vector)
+    if s==0:
+        # prevent division by 0
+        print "ERROR: why sum(vector)==0???",vector
+        return vector
+
+    return vector/s
+
 class Node(object):
     """
     Base-class for Nodes in a factor graph. Only instantiate sub-classes of Node.
@@ -177,12 +186,15 @@ class Variable(Node):
         # element-wise multiplication of all incoming messages
         # (which have the same size, since they operate on the same variable)
         if len(msgs) == 0:
-            msg = [1] * self.num_states
+            msg = np.array([1] * self.num_states)
         else:
             msg = reduce(np.multiply,msgs)
         
+        # normalize message to sum=1
+        msg_normalized = normalize(msg)
+
         # put message in destination variable
-        other.receive_msg(self,msg)
+        other.receive_msg(self,msg_normalized)
         
         if other in self.pending:
             self.pending.remove(other)
@@ -264,7 +276,7 @@ class Factor(Node):
         
         # multiply all temporary coefficient arrays
         final_coefficients = reduce(np.multiply, obs_ms)
-        
+        print "final_coeffients",final_coefficients
         # create the self.f substitute that takes into account observations
         new_f = np.multiply(self.f, final_coefficients)
         return new_f
@@ -292,9 +304,12 @@ class Factor(Node):
 
         # summation over all the axes except the destination's one
         msg = self._sum_collapse(summand, other_index)
-        
+
+        # normalize message to sum=1
+        msg_normalized = normalize(msg)
+
         # put message in destination variable
-        other.receive_msg(self,msg)
+        other.receive_msg(self,msg_normalized)
         
         if other in self.pending:
             self.pending.remove(other)

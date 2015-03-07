@@ -74,32 +74,7 @@ def create_graph():
         fa = create_factor(fc[0],fc[1])
         fs[fa.name] = fa
 
-def main():
-    create_graph()
-    """
-    print vs
-    for name,fa in fs.items():
-        print name,fa,fa.f
-    print "----"
-    for leaf_factor in ['smokes','influenza']:
-        fs[leaf_factor].send_sp_msg(vs[leaf_factor])
-    for v_name in ['sorethroat','fever','coughing','wheezing']:
-        vs[v_name].send_sp_msg(vs[v_name].neighbours[0])
-    print "fs.keys()",fs.keys()
-    for f_name in ['coughing_bronchitis','wheezing_bronchitis']:
-        fs[f_name].send_sp_msg(vs['bronchitis'])
-    for f_name in ['sorethroat_influenza','fever_influenza']:
-        fs[f_name].send_sp_msg(vs['influenza'])
-    for v_name in ['influenza','smokes']:
-        vs[v_name].send_sp_msg(fs['bronchitis_influenza_smokes'])
-    fs['bronchitis_influenza_smokes'].send_sp_msg(vs['bronchitis'])
-    #vs['influenza'].send_sp_msg(fs['bronchitis_influenza_smokes'])
-    print 'smokes in_msgs', vs['smokes'].in_msgs
-    print 'influenza in_msgs', vs['influenza'].in_msgs
-    print 'bronchitis_influenza_smokes in_msgs', fs['bronchitis_influenza_smokes'].in_msgs
-    print 'marginal for bronchitis',vs['bronchitis'].marginal()
-    """
-
+def create_node_list():
     leaves = []
     for leaf_f in ['smokes','influenza']:
         leaves.append(fs[leaf_f])
@@ -116,6 +91,17 @@ def main():
         node_list.append(vs[v_name])
     node_list.append(fs['bronchitis_influenza_smokes'])
     node_list.append(vs['bronchitis'])
+    return node_list
+
+def observe_some_variables():
+    vs['smokes'].set_observed(0)
+    vs['influenza'].set_observed(1)
+    vs['bronchitis'].set_observed(1)
+    
+def main():
+    create_graph()
+    node_list = create_node_list()
+    observe_some_variables()
     sum_product(node_list)
 
 def sum_product(node_list):
