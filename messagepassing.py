@@ -14,6 +14,7 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 def normalize(vector):
+    return vector
     s = sum(vector)
     if s==0:
         # prevent division by 0
@@ -86,11 +87,10 @@ class Node(object):
                 raise Exception("algorithm "+algo+" unknown")
 
     def receive_msg(self, other, msg):  
-        #print self.name,"received message",msg,"from",str(other)
+        #print str(self),"received message",msg,"from",str(other)
         # Store the incomming message, replacing previous messages from the same node
         self.in_msgs[other] = msg
 
-        # TODO: add pending messages
         self.set_pending_except(other)
 
     def _in_msgs_except(self,exclude=None):
@@ -112,7 +112,7 @@ class Node(object):
         if len(msg_vectors) == 0:
             # leaf node?
             return factor_func(np.array(1))
-
+    
         ixstuff = np.ix_(*msg_vectors)
         ret = reduce(reduce_func, ixstuff)
         return ret
@@ -151,11 +151,8 @@ class Variable(Node):
         # Call the base-class constructor
         super(Variable, self).__init__(name)
     
-    def initialize_messages(self, value):
-        if type(value) is np.ndarray:
-            msg = value
-        else:
-            msg = np.array([value] * self.num_states)
+    def initialize_messages(self, msg):
+        assert type(msg) is np.ndarray
         
         for neigh in self.neighbours:
             self.in_msgs[neigh] = msg
@@ -205,9 +202,10 @@ class Variable(Node):
         Returns: marginal, Z. The first is a numpy array containing the normalized marginal distribution.
          Z is either equal to the input Z, or computed in this function (if Z=None was passed).
         """
+        ma = reduce(reduce_func, self._in_msgs_except())
         if Z is None:
-            Z = None # TODO
-        return reduce(reduce_func, self._in_msgs_except()), Z
+            Z = np.sum(ma)
+        return ma, Z
     
     def send_sp_msg(self, other):
         return self.send_generic_msg(np.multiply, lambda x:x, other)
@@ -230,11 +228,11 @@ class Variable(Node):
         else:
             msg = reduce(reduce_func,msgs)
         
-        # normalize message to sum=1
-        msg_normalized = normalize(msg)
+        ## normalize message to sum=1
+        #msg_normalized = normalize(msg) #not used
 
         # put message in destination variable
-        other.receive_msg(self,msg_normalized)
+        other.receive_msg(self,msg)
         
         if other in self.pending:
             self.pending.remove(other)
@@ -277,9 +275,11 @@ class Factor(Node):
 
         self.f = f
 
-    def initialize_messages(self, uniform_value):
+    def initialize_messages(self, msg):
+        assert type(msg) is np.ndarray
+        
         for neigh in self.neighbours:
-            self.in_msgs[neigh] = np.array([uniform_value] * neigh.num_states)
+            self.in_msgs[neigh] = msg
 
     def has_latents(self):
         return any([ neigh.is_latent for neigh in self.neighbours])
@@ -361,11 +361,11 @@ class Factor(Node):
         # summation/max over all the axes except the destination's one
         msg = self._collapse(collapse_func, summand, other_index)
 
-        # normalize message to sum=1
-        msg_normalized = normalize(msg)
+        ## normalize message to sum=1
+        #msg_normalized = normalize(msg) #not used
 
         # put message in destination variable
-        other.receive_msg(self,msg_normalized)
+        other.receive_msg(self,msg)
         
         if other in self.pending:
             self.pending.remove(other)

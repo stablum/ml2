@@ -53,15 +53,12 @@ factors_config = [
 
 def create_factor(vnames, values):
     fa_vs = []
-    #f_shape = [] (no need DELME)
     print "vnames",vnames
     for name in vnames:
         v = vs[name]
         fa_vs.append(v) 
-        #f_shape.append(v.num_states) (no need DELME)
 
     fa_name = "_".join(vnames)
-    #f_shape = tuple(f_shape) (no need, DELME)
     f = np.array(values)
     fa = Factor(fa_name,f,fa_vs)
     return fa
@@ -99,15 +96,15 @@ def observe_some_variables():
     vs['influenza'].set_observed(1)
     vs['bronchitis'].set_observed(1)
     
-def main():
+def main_diagnosis():
     create_graph()
     node_list = create_node_list()
     observe_some_variables()
-    #sum_product(node_list)
-    launch.max_sum(node_list)
-    #print fs['bronchitis_influenza_smokes'].marginal_sp()
-    launch.argmax_on_latents(vs, 'ms')
+    launch.sum_product(node_list)
+    #launch.max_sum(node_list)
+    print fs['bronchitis_influenza_smokes'].marginal_sp()
+    #launch.argmax_on_latents(vs, 'ms')
 
 if __name__ == "__main__":
-    main()
+    main_diagnosis()
 

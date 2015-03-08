@@ -29,7 +29,7 @@ def prepare():
     #figure()
     #imshow(noise_test_im)
     #show()
-    return noise_im[0:60,0:40]
+    return noise_im[0:200,0:220]
 
 def create_vargrids(im):
     print "creating variable grids.."
@@ -100,8 +100,10 @@ def create_image(lg):
 
     return ret
 
-def main():
+def main_dalmatian():
     noise_im = prepare()
+    #noise_im = np.zeros((10,10))
+    #noise_im[5:9,5:9] = 1
 
     lg,og = create_vargrids(noise_im)
     fa1,fa2,fa3 = create_factors(noise_im,lg,og)
@@ -113,10 +115,12 @@ def main():
         node.initialize_messages(msg_init)
         node.set_pending_except()
 
-    num_iterations = 100
+    num_iterations = 7
     for iteration in range(num_iterations):
         print "iteration",iteration,"..."
-        for node in all_nodes:
+        shuffled_nodes = all_nodes[:]
+        random.shuffle(shuffled_nodes)
+        for node in shuffled_nodes:
             #print "node",node.name
             node.send_pending('ms')
 
@@ -131,4 +135,4 @@ def main():
     print "done."
 
 if __name__ == "__main__":
-    main()
+    main_dalmatian()
