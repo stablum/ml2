@@ -39,10 +39,12 @@ def create_vargrids(im):
         for y in range(im.shape[0]):
             lname = str(x)+":"+str(y)
             l = Variable(lname,2)
+            l.set_latent()
             lg[x].append(l)
 
             oname = "o_"+str(x)+":"+str(y)
             o = Variable(oname,2)
+            o.set_observed(im[y,x])
             og[x].append(o)
 
     return lg, og
