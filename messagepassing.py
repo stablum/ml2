@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import numpy as np
 
+PRINT = False
+
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -75,7 +77,7 @@ class Node(object):
    
     def send_pending(self,algo='sp'):
         for node in list(self.pending):
-            print "in",self,"link to",node,"is pending. sending message..."
+            #print "in",self,"link to",node,"is pending. sending message..."
             if algo == 'sp':
                 self.send_sp_msg(node)
             elif algo == 'ms':
@@ -84,7 +86,7 @@ class Node(object):
                 raise Exception("algorithm "+algo+" unknown")
 
     def receive_msg(self, other, msg):  
-        print self.name,"received message",msg,"from",str(other)
+        #print self.name,"received message",msg,"from",str(other)
         # Store the incomming message, replacing previous messages from the same node
         self.in_msgs[other] = msg
 
@@ -209,7 +211,7 @@ class Variable(Node):
         return self.send_generic_msg(np.add, np.log, other)
 
     def send_generic_msg(self, reduce_func, factor_func, other):
-        print bcolors.OKBLUE+"msg ",str(self),"-->",str(other)+bcolors.ENDC
+        #print bcolors.OKBLUE+"msg ",str(self),"-->",str(other)+bcolors.ENDC
         assert len(self.in_msgs) >= len(self.neighbours) - 1
         assert other in self.neighbours
         assert self.can_send_to(other)
@@ -319,7 +321,7 @@ class Factor(Node):
         
         # multiply all temporary coefficient arrays
         final_coefficients = reduce(np.multiply, obs_ms)
-        print "final_coeffients",final_coefficients
+        #print "final_coeffients",final_coefficients
         # create the self.f substitute that takes into account observations
         new_f = np.multiply(self.f, final_coefficients)
         return new_f
@@ -331,7 +333,7 @@ class Factor(Node):
         return self.send_generic_msg(np.max, np.add, np.log, other)
         
     def send_generic_msg(self, collapse_func, reduce_func, factor_func, other):
-        print bcolors.OKBLUE+"msg ",str(self),"-->",str(other)+bcolors.ENDC
+        #print bcolors.OKBLUE+"msg ",str(self),"-->",str(other)+bcolors.ENDC
         assert len(self.in_msgs) >= len(self.neighbours) - 1
         assert other in self.neighbours
         assert self.can_send_to(other)

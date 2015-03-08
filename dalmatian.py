@@ -5,30 +5,31 @@ from matplotlib.pyplot import imshow, figure, show
 
 from messagepassing import Node, Variable, Factor, bcolors
 
-# Load the image and binarize
-im = np.mean(imread('dalmatian1.png'), axis=2) > 0.5
-imshow(im)
-gray()
+def prepare():
+    # Load the image and binarize
+    im = np.mean(imread('dalmatian1.png'), axis=2) > 0.5
+    #imshow(im)
+    #gray()
 
-# Add some noise
-noise = np.random.rand(*im.shape) > 0.9
-noise_im = np.logical_xor(noise, im)
-figure()
-imshow(noise_im)
+    # Add some noise
+    noise = np.random.rand(*im.shape) > 0.9
+    noise_im = np.logical_xor(noise, im)
+    figure()
+    #imshow(noise_im)
 
-test_im = np.zeros((10,10))
-#test_im[5:8, 3:8] = 1.0
-#test_im[5,5] = 1.0
-figure()
-imshow(test_im)
+    test_im = np.zeros((10,10))
+    #test_im[5:8, 3:8] = 1.0
+    #test_im[5,5] = 1.0
+    figure()
+    #imshow(test_im)
 
-# Add some noise
-noise = np.random.rand(*test_im.shape) > 0.9
-noise_test_im = np.logical_xor(noise, test_im)
-figure()
-imshow(noise_test_im)
-
-#show()
+    # Add some noise
+    noise = np.random.rand(*test_im.shape) > 0.9
+    noise_test_im = np.logical_xor(noise, test_im)
+    figure()
+    #imshow(noise_test_im)
+    #show()
+    return noise_im[0:110,0:90]
 
 def create_vargrids(im):
     print "creating variable grids.."
@@ -83,18 +84,39 @@ def create_factors(im,lg,og):
     print "done creating factors."
     return ret
 
-lg,og = create_vargrids(noise_im)
-factors = create_factors(noise_im,lg,og)
-all_nodes = [v for sublist in lg + og for v in sublist]+factors
-for node in all_nodes:
-    node.initialize_messages(0)
-    node.set_pending_except()
+def create_image(lg):
+    y_max = len(lg)
+    x_max = len(lg[0])
+    ret = np.zeros(y_max,x_max)
+    for y in range(y_max):
+        for x in range(x_max):
+            ret[y,x] = lg[x][y].argmax('ms')
+    return ret
 
-num_iterations = 10
-for iteration in range(num_iterations):
-    print "iteration",iteration,"..."
+def main():
+    noise_im = prepare()
+
+    imshow(noise_im)
+    show()
+
+    lg,og = create_vargrids(noise_im)
+    factors = create_factors(noise_im,lg,og)
+    all_nodes = [v for sublist in lg + og for v in sublist]+factors
     for node in all_nodes:
-        node.send_pending('ms')
-print "size all nodes",len(all_nodes)
-print "done."
+        node.initialize_messages(0)
+        node.set_pending_except()
 
+    num_iterations = 10
+    for iteration in range(num_iterations):
+        print "iteration",iteration,"..."
+        for node in all_nodes:
+            #print "node",node.name
+            node.send_pending('ms')
+
+    recovered = create_image(lg)
+    imshow(recovered)
+    show()
+    print "done."
+
+if __name__ == "__main__":
+    main()
