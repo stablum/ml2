@@ -31,27 +31,29 @@ imshow(noise_test_im)
 #show()
 
 def create_vargrids(im):
+    print "creating variable grids.."
     lg = [] # grid of latents
     og = [] # grid of observed
-    for x in range(im.shape[1]):
+    for y in range(im.shape[0]):
         lg.append([])
         og.append([])
-        for y in range(im.shape[0]):
-            lname = str(x)+":"+str(y)
+        for x in range(im.shape[1]):
+            lname = "l_"+str(x)+":"+str(y)
             l = Variable(lname,2)
             l.set_latent()
-            lg[x].append(l)
+            lg[y].append(l)
 
             oname = "o_"+str(x)+":"+str(y)
             o = Variable(oname,2)
             o.set_observed(im[y,x])
-            og[x].append(o)
-
+            og[y].append(o)
+    print "done creating variable grids"
     return lg, og
 
 def create_factors(im,lg,og):
+    print "creating factors.."
     ret = []
-    # vertical factors (latent variables)
+    print "vertical factors (latent variables)"
     for x in range(im.shape[1]):
         for y in range(im.shape[0]-1):
             fname = str(x)+":"+str(y)+"_"+str(x)+":"+str(y+1)
@@ -60,7 +62,7 @@ def create_factors(im,lg,og):
             fa = Factor(fname,f,neighbours)
             ret.append(fa)
 
-    # horizontal factors (latent variables)
+    print "horizontal factors (latent variables).."
     for x in range(im.shape[1]-1):
         for y in range(im.shape[0]):
             fname = str(x)+":"+str(y)+"_"+str(x+1)+":"+str(y)
@@ -70,7 +72,7 @@ def create_factors(im,lg,og):
             ret.append(fa)
     return ret
 
-    # "depth" factors (observed/latent variables)
+    print '"depth" factors (observed/latent variables)..'
     for x in range(im.shape[1]):
         for y in range(im.shape[0]):
             fname = "o_"+str(x)+":"+str(y)+"_"+str(x)+":"+str(y)
@@ -78,8 +80,21 @@ def create_factors(im,lg,og):
             f = numpy.array(np.ones((2,2))/4) # uniform distribution
             fa = Factor(fname,f,neighbours)
             ret.append(fa)
+    print "done creating factors."
     return ret
 
-lg,og = create_vargrids(test_im)
-factors = create_factors(test_im,lg,og)
+lg,og = create_vargrids(noise_im)
+factors = create_factors(noise_im,lg,og)
+all_nodes = [v for sublist in lg + og for v in sublist]+factors
+for node in all_nodes:
+    node.initialize_messages(0)
+    node.set_pending_except()
+
+num_iterations = 10
+for iteration in range(num_iterations):
+    print "iteration",iteration,"..."
+    for node in all_nodes:
+        node.send_pending('ms')
+print "size all nodes",len(all_nodes)
 print "done."
+

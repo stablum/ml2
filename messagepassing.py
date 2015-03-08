@@ -36,7 +36,7 @@ class Node(object):
         
         # Reset the node-state (not the graph topology)
         self.reset()
-        
+    
     def reset(self):
         # Incoming messages; a dictionary mapping neighbours to messages.
         # That is, it maps  Node -> np.ndarray.
@@ -48,6 +48,9 @@ class Node(object):
 
     def add_neighbour(self, nb):
         self.neighbours.append(nb)
+
+    def initialize_messages(self, uniform_value):
+        raise Exception('Method initialize_messages not implemented in base-class Node')
 
     def send_sp_msg(self, other):
         # To be implemented in subclass.
@@ -146,6 +149,10 @@ class Variable(Node):
         # Call the base-class constructor
         super(Variable, self).__init__(name)
     
+    def initialize_messages(self, uniform_value):
+        for neigh in self.neighbours:
+            self.in_msgs[neigh] = np.array([uniform_value] * self.num_states)
+
     def set_observed(self, observed_state):
         """
         Set this variable to an observed state.
@@ -262,6 +269,10 @@ class Factor(Node):
             nb.add_neighbour(self)
 
         self.f = f
+
+    def initialize_messages(self, uniform_value):
+        for neigh in self.neighbours:
+            self.in_msgs[neigh] = np.array([uniform_value] * neigh.num_states)
 
     def has_latents(self):
         return any([ neigh.is_latent for neigh in self.neighbours])
