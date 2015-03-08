@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
 
-PRINT = False
-
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
