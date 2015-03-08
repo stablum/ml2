@@ -2,6 +2,7 @@
 import numpy as np
 
 from messagepassing import Node, Variable, Factor, bcolors
+import launch
 
 vs = {}
 fs = {}
@@ -103,32 +104,9 @@ def main():
     node_list = create_node_list()
     observe_some_variables()
     #sum_product(node_list)
-    max_sum(node_list)
+    launch.max_sum(node_list)
     #print fs['bronchitis_influenza_smokes'].marginal_sp()
-    argmax_on_latents('ms')
-
-def run_on_list(node_list,algo='sp'):
-    node_list_reverse = node_list[:]
-    node_list_reverse.reverse()
-    for node in node_list + node_list_reverse:
-        print bcolors.OKGREEN + str(node) + bcolors.ENDC
-        node.send_pending(algo)
-
-def sum_product(node_list):
-    run_on_list(node_list,algo='sp')
-
-def max_sum(node_list):
-    run_on_list(node_list,algo='ms')
-
-def argmax_on_latents(algo):
-    for v in latent_variables():
-        print v.name,'=', v.argmax(algo)
-
-def latent_variables():
-    return [ curr for curr in vs.values() if curr.is_latent() ]
-
-def factors_with_latents():
-    return [ curr for curr in fs.values() if curr.has_latents() ]
+    launch.argmax_on_latents(vs, 'ms')
 
 if __name__ == "__main__":
     main()
