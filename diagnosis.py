@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import numpy as np
 
-from sumproduct import Node, Variable, Factor, bcolors
+from messagepassing import Node, Variable, Factor, bcolors
 
 vs = {}
 fs = {}
