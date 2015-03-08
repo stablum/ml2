@@ -102,8 +102,10 @@ def main():
     create_graph()
     node_list = create_node_list()
     observe_some_variables()
-    sum_product(node_list)
-    #max_sum(node_list)
+    #sum_product(node_list)
+    max_sum(node_list)
+    #print fs['bronchitis_influenza_smokes'].marginal_sp()
+    argmax_on_latents('ms')
 
 def run_on_list(node_list,algo='sp'):
     node_list_reverse = node_list[:]
@@ -117,6 +119,16 @@ def sum_product(node_list):
 
 def max_sum(node_list):
     run_on_list(node_list,algo='ms')
+
+def argmax_on_latents(algo):
+    for v in latent_variables():
+        print v.name,'=', v.argmax(algo)
+
+def latent_variables():
+    return [ curr for curr in vs.values() if curr.is_latent() ]
+
+def factors_with_latents():
+    return [ curr for curr in fs.values() if curr.has_latents() ]
 
 if __name__ == "__main__":
     main()

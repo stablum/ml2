@@ -19,6 +19,9 @@ def normalize(vector):
 
     return vector/s
 
+def my_argmax(a):
+    return np.unravel_index(np.argmax(a),a.shape)
+
 class Node(object):
     """
     Base-class for Nodes in a factor graph. Only instantiate sub-classes of Node.
@@ -76,7 +79,6 @@ class Node(object):
                 self.send_ms_msg(node)
             else:
                 raise Exception("algorithm "+algo+" unknown")
-                
 
     def receive_msg(self, other, msg):  
         print self.name,"received message",msg,"from",str(other)
@@ -163,12 +165,24 @@ class Variable(Node):
         # Using this representation we need not differentiate between observed and latent
         # variables when sending messages.
         self.observed_state[:] = 1.0
-        
+     
+    def is_latent(self):
+        return np.array_equal(self.observed_state, np.ones(len(self.observed_state)))
+
+    def is_observed(self):
+        return not self.is_latent()
+
     def reset(self):
         super(Variable, self).reset()
         self.observed_state = np.ones(self.num_states)
-        
-    def marginal(self, Z=None):
+
+    def marginal(self,Z=None): #for sum product
+        return self.marginal_generic(np.multiply, Z)
+
+    def marginal_ms(self, Z=None):
+        return self.marginal_generic(np.add, Z)
+
+    def marginal_generic(self, reduce_func, Z=None):
         """
         Compute the marginal distribution of this Variable.
         It is assumed that message passing has completed when this function is called.
@@ -177,8 +191,9 @@ class Variable(Node):
         Returns: marginal, Z. The first is a numpy array containing the normalized marginal distribution.
          Z is either equal to the input Z, or computed in this function (if Z=None was passed).
         """
-        # TODO: compute marginal
-        return None, Z
+        if Z is None:
+            Z = None # TODO
+        return reduce(reduce_func, self._in_msgs_except()), Z
     
     def send_sp_msg(self, other):
         return self.send_generic_msg(np.multiply, lambda x:x, other)
@@ -197,7 +212,7 @@ class Variable(Node):
         # element-wise multiplication of all incoming messages
         # (which have the same size, since they operate on the same variable)
         if len(msgs) == 0:
-            msg = factor_func(np.array([1] * self.num_states))
+            msg = factor_func(np.array([1.0] * self.num_states))
         else:
             msg = reduce(reduce_func,msgs)
         
@@ -210,8 +225,15 @@ class Variable(Node):
         if other in self.pending:
             self.pending.remove(other)
     
-    def marginal(self):
-        return reduce(np.multiply,self._in_msgs_except())
+    def argmax(self,algo):
+        if algo == 'sp':
+            marginal_func = self.marginal
+        elif algo == 'ms':
+            marginal_func = self.marginal_ms
+        else:
+            raise Exception("invalid algorithm")
+
+        return my_argmax(marginal_func()[0])
 
     def __str__(self):
         # This is printed when using 'print node_instance'
@@ -240,7 +262,10 @@ class Factor(Node):
             nb.add_neighbour(self)
 
         self.f = f
-    
+
+    def has_latents(self):
+        return any([ neigh.is_latent for neigh in self.neighbours])
+
     def f_with_observations(self):
         """
         creating an array of coefficients that has the same shape of self.f
@@ -326,6 +351,19 @@ class Factor(Node):
         
         if other in self.pending:
             self.pending.remove(other)
+    
+    def marginal_sp(self):
+        return self.marginal_generic(np.multiply, lambda f:f)
+
+    def marginal_ms(self):
+        return self.marginal_generic(np.add, np.log)
+
+    def marginal_generic(self, reduce_func, factor_func):
+        # outer product/sum of all the messages
+        pr = self._in_msgs_reduce(reduce_func, factor_func)
+        f_o = factor_func(self.f_with_observations())
+        ret = reduce_func(pr,f_o)
+        return ret
 
     def __str__(self):
         # This is printed when using 'print node_instance'
