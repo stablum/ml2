@@ -151,9 +151,14 @@ class Variable(Node):
         # Call the base-class constructor
         super(Variable, self).__init__(name)
     
-    def initialize_messages(self, uniform_value):
+    def initialize_messages(self, value):
+        if type(value) is np.ndarray:
+            msg = value
+        else:
+            msg = np.array([value] * self.num_states)
+        
         for neigh in self.neighbours:
-            self.in_msgs[neigh] = np.array([uniform_value] * self.num_states)
+            self.in_msgs[neigh] = msg
 
     def set_observed(self, observed_state):
         """
